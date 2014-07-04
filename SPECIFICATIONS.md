@@ -50,7 +50,7 @@ The portal will provide the stored data using the following REST API:
 ```
 GET /temperature?begin=&end=&offset=&count=
 ```
-* the response will JSON formatted data:
+* the response will contain the results, JSON formatted:
 ```
 [
    {
