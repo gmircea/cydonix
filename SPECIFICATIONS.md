@@ -51,7 +51,26 @@ The portal will provide the stored data using the following REST API:
 GET /temperature?begin=&end=&offset=&count=
 ```
 * the response will JSON formatted data:
-TODO
+```
+[
+   {
+      "timestamp":"20120209T113200",
+      "value":"22"
+   },
+   {
+      "timestamp":"20120209T113700",
+      "value":"22.5"
+   },
+   {
+      "timestamp":"20120209T114200",
+      "value":"22"
+   },
+   {
+      "timestamp":"20120209T114700",
+      "value":"23"
+   }
+]
+```
 
 The portal will be implemented using [Django](https://www.djangoproject.com/) framework.
 
