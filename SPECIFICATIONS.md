@@ -48,9 +48,12 @@ and store them in database.
 The portal will provide the stored data using the following REST API:
 * request using GET method:
 ```
-GET /temperature?begin=&end=&offset=&count=
+GET /temperature?begin=20120209T000000&end=20120210T120000&offset=0&count=4
 ```
-* the response will contain the results, JSON formatted:
+This requests the values of the _temperature_ sensor, between two date intervals.
+An _offset_ and _count_ can also be specified, used for pagination.
+
+* the response will contain the results, JSON formatted, ordered, ascending by date:
 ```
 [
    {
