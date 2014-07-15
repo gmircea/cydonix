@@ -11,21 +11,27 @@ import re
 import threading
 
 import ConfigParser
+from optparse import OptionParser
+import sys
+import os
 
 
 class PortalXMPP(ClientXMPP):
-    def __init__(self, jid, password, sensor_bot_jid, sqlite3_DB_path):
+    def __init__(self, jid, password, sensor_bot_jid, sqlite3_DB_path, polling):
         ClientXMPP.__init__(self, jid, password)
-
-        # The path to the sqlite3 database
-        self.DB_path = sqlite3_DB_path
-
-        # Setting the session_start event handler to a method that prints "Started" at session start
-        self.add_event_handler("session_start", self.session_start)
 
         # Setting the sender jid and the receiver jid
         self.sender_jid = jid
         self.sensor_bot_jid = sensor_bot_jid
+
+        # The path to the sqlite3 database
+        self.DB_path = sqlite3_DB_path
+
+        # The sensor value polling interval in seconds
+        self.polling = polling
+
+        # Setting the session_start event handler to a method that prints "Started" at session start
+        self.add_event_handler("session_start", self.session_start)
 
         # Connecting bot
         self.connect()
@@ -71,7 +77,7 @@ class PortalXMPP(ClientXMPP):
 
         try:
             # Creating and starting the next send thread before the current one terminates
-            self.send_thread = threading.Timer(10, self.send_m)
+            self.send_thread = threading.Timer(self.polling, self.send_m)
             self.send_thread.start()
         except KeyboardInterrupt:
             self.send_thread.cancel()
@@ -135,12 +141,35 @@ class PortalXMPP(ClientXMPP):
     def session_start(self, event):
         print("Started")
 
-logging.basicConfig(level=logging.disable('INFO'),
-                    format='%(levelname)-8s %(message)s')
+
+
+# Setting up the command line arguments
+optp = OptionParser()
+
+optp.add_option('-c', '--config=FILE', dest="conf_file", help='configuration FILE')
+optp.add_option('-d', '--debug', help='set logging to DEBUG', action='store_const',
+                dest='loglevel', const=logging.DEBUG, default=logging.disable('INFO'))
+#optp.add_option('-l', '--log=FILE', dest="log_file", help='log messages to FILE')
+
+opts, args = optp.parse_args()
+
+logging.basicConfig(level = opts.loglevel,
+					format = '%(levelname)-8s %(message)s')
+
+# If configuration file does not exist the script will terminate
+if not (os.path.isfile(str(opts.conf_file))):
+    print "The configuration file does not exist"
+    sys.exit()
+
+# Reading data from the configuration file
+conf = ConfigParser.ConfigParser()
+conf.read(opts.conf_file)
+
+sender_jid = conf.get("XMPP", "sender_jid")
+sender_pass = conf.get("XMPP", "sender_pass")
+receiver_jid = conf.get("XMPP", "receiver_jid")
+sqlite3_DB_path = conf.get("XMPP", "sqlite3_DB_path")
+polling = int(conf.get("XMPP", "polling"))
 
 # Initializing the XMPP bot
-cfg = ConfigParser.ConfigParser()
-cfg.read("config.ini")
-
-xmpp = PortalXMPP(cfg.get("Connect", 'sender_jid'), cfg.get("Connect", 'sender_pass'),
-                  cfg.get("Connect", 'receiver_jid'), cfg.get("Connect", 'sqlite3_DB_path'))
+xmpp = PortalXMPP(sender_jid, sender_pass, receiver_jid, sqlite3_DB_path, polling)
