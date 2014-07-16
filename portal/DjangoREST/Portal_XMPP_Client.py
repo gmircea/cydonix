@@ -93,7 +93,13 @@ class PortalXMPP(ClientXMPP):
 
         for s_sensor_type_name_item in s_sensor_type_names:
             s_sensor_type_name = re.search("([\w]+(?==))", s_sensor_type_name_item).group(1)
-            value = int(re.search("((?<==)[\w]+)", s_sensor_type_name_item).group(1))
+            re_value = re.search("((?<==)[\w]+)", s_sensor_type_name_item).group(1)
+            if re_value == 'True':
+                value = 1
+            elif re_value == 'False':
+                value = 0
+            else:
+                value = float(re_value)
 
             print("sensor_type = '"+s_sensor_type_name+"' value = '"+str(value)+"'")
 
@@ -149,12 +155,12 @@ optp = OptionParser()
 optp.add_option('-c', '--config=FILE', dest="conf_file", help='configuration FILE')
 optp.add_option('-d', '--debug', help='set logging to DEBUG', action='store_const',
                 dest='loglevel', const=logging.DEBUG, default=logging.disable('INFO'))
-#optp.add_option('-l', '--log=FILE', dest="log_file", help='log messages to FILE')
+optp.add_option('-l', '--log=FILE', dest="log_file", help='log messages to FILE')
 
 opts, args = optp.parse_args()
 
 logging.basicConfig(level = opts.loglevel,
-					format = '%(levelname)-8s %(message)s')
+					format = '%(levelname)-8s %(message)s', filename='log.txt', filemode='a')
 
 # If configuration file does not exist the script will terminate
 if not (os.path.isfile(str(opts.conf_file))):
