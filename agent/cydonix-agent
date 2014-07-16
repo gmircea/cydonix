@@ -24,6 +24,37 @@ if sys.version_info < (3,0):
 else :
     raw_input = input
 
+global device_units
+device_units = {'temperature':'C' ,'pressure':'bar',
+                'altitude':'m', 'soc_temp':'C',
+                'arm_freq':'MHz','core_freq':'MHz',
+                'core_volt':'V','sdram_volt':'V'
+                }
+
+global device_description
+device_description = {'temperature':'BMP180 temperature sensor' ,
+                      'pressure':'BMP180 pressure sensor',
+                      'altitude':'BMP180 calculated altitude',
+                      'soc_temp':'BCM2835 temperature',
+                      'arm_freq':'BCM2835 ARM frequency',
+                      'core_freq':'BCM2835 GPU code frequency',
+                      'core_volt':'BCM2835 core voltage',
+                      'sdram_volt':'BCM2835 ram voltage'
+                     }
+
+global device_alias
+device_alias = {'temperature':'Temperature' ,
+                'pressure':'Pressure',
+                'altitude':'Altitude',
+                'soc_temp':'Core temperature',
+                'arm_freq':'ARM frequency',
+                'core_freq':'Core frequency',
+                'core_volt':'Core voltage',
+                'sdram_volt':'RAM voltage'
+                }
+
+
+
 class RaspberryGpio(threading.Thread) :
 
     '''  Raspberry GPIO class. It has methods which
@@ -67,12 +98,12 @@ class RaspberryGpio(threading.Thread) :
             pressure = sensor.read_pressure()
             altitude = sensor.read_altitude()
             device_val = {'temperature':temperature,
-                             'pressure':pressure,
-                             'altitude':altitude, 'switch':False,
-                             'soc_temp':None, 'arm_freq':None,
-                             'core_freq':None, 'core_volt':None,
-                             'sdram_volt':None
-                          }
+                          'pressure':pressure,
+                          'altitude':altitude, 'switch':False,
+                          'soc_temp':None, 'arm_freq':None,
+                          'core_freq':None, 'core_volt':None,
+                          'sdram_volt':None
+                         }
             vcgencmd = {'soc_temp':"measure_temp",
                         'core_volt':"measure_volts",
                         'arm_freq':"measure_clock arm",
@@ -112,8 +143,6 @@ class RaspberryGpio(threading.Thread) :
             device_val['pressure'] = float(device_val['pressure'])
             device_val['altitude'] = round(device_val['altitude'],2)
             device_val['altitude'] = float(device_val['altitude'])
-            for key in device_val:
-                print "%s - %s" % (val_temp[key],device_val[key])
             #   We will publish a notification on the pubsub node
             # in case that sensor values have been modified with
             # 5 percents comparing to the previous values ( this
@@ -198,6 +227,23 @@ class XmppClass(sleekxmpp.ClientXMPP) :
                 msg.reply(mymsg).send()
                 logger.info(msg)
 
+            elif (message_string[0] == 'DISCO') :
+            # Custom disco functionality
+                device_disco = {}
+                for key in device_val :
+                # It will send data to cydonix client about devices
+                # which can send data from sensors
+                    if device_val[key] != 0 :
+                        device_disco[key] = device_units[key] + "|" +\
+                                            device_description[key] +\
+                                            "|" + device_alias[key]
+                # XMPP Message Composition and reply
+                mymsg = ';'.join(['%s|%s' % (key,value)
+                                 for (key,value)
+                                 in device_disco.items()])
+                msg.reply(mymsg).send()
+                logger.info(msg)
+
             else :
             # HELP or invalid command
                 error_message = "Available commands \n \
@@ -214,7 +260,6 @@ class XmppClass(sleekxmpp.ClientXMPP) :
                                               self.node,
                                               payload=payload)
             id = result['pubsub']['publish']['item']['id']
-            print "\n %s" % data
 
         except:
             logging.error('Could not publish to: %s' % self.node)
@@ -275,7 +320,7 @@ if __name__ == '__main__':
     fh.setLevel(logging.DEBUG)
     ch = logging.StreamHandler()
     ch.setLevel(logging.ERROR)
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter('%(asctime)s - %(message)s')
     fh.setFormatter(formatter)
     ch.setFormatter(formatter)
     logger.addHandler(fh)
