@@ -1,4 +1,5 @@
 from django.http import HttpResponse
+from django.utils.timezone import utc
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.renderers import JSONRenderer
 from portal.models import Sensors, SensorData
@@ -36,7 +37,8 @@ def sensor_value_list(request, sensor_type_name):
 
 def iso8601_to_datetime(datetime_string):
     # From YYYYMMDDTHHMMSSZ to datetime
-    return datetime.datetime.strptime(datetime_string, "%Y%m%dT%H%M%SZ")
+    dt = datetime.datetime.strptime(datetime_string, "%Y%m%dT%H%M%SZ").replace(tzinfo=utc)
+    return dt
 
 
 def datetime_to_iso8601(sensor_data):
@@ -44,7 +46,6 @@ def datetime_to_iso8601(sensor_data):
     size = len(sensor_data)
     for i in range(0, size):
         #utc_time = sensor_data[i].timestamp.strftime("%Y%m%dT%H%M%SZ")
-        print(sensor_data[i].timestamp)
         sensor_data[i].timestamp = sensor_data[i].timestamp.strftime("%Y%m%dT%H%M%SZ")
     return sensor_data
 
