@@ -97,7 +97,7 @@ class PortalXMPP(ClientXMPP):
 
         for s_sensor_type_name_item in s_sensor_type_names:
             s_sensor_type_name = re.search("([\w]+(?==))", s_sensor_type_name_item).group(1)
-            re_value = re.search("((?<==)[\w]+)", s_sensor_type_name_item).group(1)
+            re_value = re.search("((?<==)[\w]+[.]*[\w]*)", s_sensor_type_name_item).group(1)
             if re_value == 'True':
                 value = 1
             elif re_value == 'False':
