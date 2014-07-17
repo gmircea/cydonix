@@ -315,16 +315,16 @@ if __name__ == '__main__':
 
     # Logging
     logger = logging.getLogger('cydonix_log')
-    logger.setLevel(logging.DEBUG)
-    fh = logging.FileHandler('cydonix_agent.log')
-    fh.setLevel(logging.DEBUG)
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.ERROR)
-    formatter = logging.Formatter('%(asctime)s - %(message)s')
-    fh.setFormatter(formatter)
-    ch.setFormatter(formatter)
-    logger.addHandler(fh)
-    logger.addHandler(ch)
+
+    if(opts.log_file) :
+    #  If we pass a log file as argument
+    # it will store in it the message stanzas
+        logger.setLevel(logging.DEBUG)
+        file_handler = logging.FileHandler(opts.log_file)
+        file_handler.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s - %(message)s')
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
 
     # Connecting to the XMPP Server
     try :
