@@ -17,7 +17,7 @@ import os
 
 
 class PortalXMPP(ClientXMPP):
-    def __init__(self, jid, password, sensor_bot_jid, sqlite3_DB_path, polling):
+    def __init__(self, jid, password, sensor_bot_jid, sqlite3_db_path, polling):
         ClientXMPP.__init__(self, jid, password)
 
         # Setting the sender jid and the receiver jid
@@ -25,10 +25,14 @@ class PortalXMPP(ClientXMPP):
         self.sensor_bot_jid = sensor_bot_jid
 
         # The path to the sqlite3 database
-        self.DB_path = sqlite3_DB_path
+        self.DB_path = sqlite3_db_path
 
         # The sensor value polling interval in seconds
         self.polling = polling
+
+        # The sensor_types cache
+        self.sensor_types_dict = {}
+        self.sensor_types_cache_init()
 
         # Setting the session_start event handler to a method that prints "Started" at session start
         self.add_event_handler("session_start", self.session_start)
@@ -103,16 +107,28 @@ class PortalXMPP(ClientXMPP):
 
             print("sensor_type = '"+s_sensor_type_name+"' value = '"+str(value)+"'")
 
-            # Fetching the id of the sensor_type with the name = s_sensor_type_name if it exists
-            self.cursor.execute("SELECT id FROM portal_sensors WHERE sensor_type='"+s_sensor_type_name+"'")
-            sensor_type = self.cursor.fetchone()
+            commit = 0
+            sensor_type = 0
 
-            if str(sensor_type) != 'None':
-                sensor_type = sensor_type[0]
-                commit = 1
-            else:
-                print("There is no sensor of type '"+s_sensor_type_name+"'")
-                commit = 0
+            # Fetching the id of the sensor_type with the name = s_sensor_type_name if it exists in the cache
+            found_in_cache = 0
+            for item in self.sensor_types_dict:
+                if item == s_sensor_type_name:
+                    found_in_cache = 1
+                    sensor_type = self.sensor_types_dict[item]
+                    commit = 1
+
+            # Fetching the id of the sensor_type with the name = s_sensor_type_name if it exists in the database
+            if found_in_cache == 0:
+                self.cursor.execute("SELECT id FROM portal_sensors WHERE sensor_type='"+s_sensor_type_name+"'")
+                sensor_type = self.cursor.fetchone()
+                if str(sensor_type) != 'None':
+                    sensor_type = sensor_type[0]
+                    self.sensor_types_dict[s_sensor_type_name] = sensor_type  # Add found id to cache
+                    commit = 1
+                else:
+                    print("There is no sensor of type '"+s_sensor_type_name+"'")
+                    commit = 0
 
             if commit > 0:
                 utc_time = datetime.utcnow().isoformat(' ')  # UTC date and time in ISO 8601 format
@@ -121,23 +137,12 @@ class PortalXMPP(ClientXMPP):
                 s_value = str(value)
                 s_time = "'"+str(utc_time)+"'"
 
-                # Determining the last id value in order to provide the next one
-                self.cursor.execute("SELECT id FROM portal_sensordata ORDER BY id DESC LIMIT 1")
-                last_id = self.cursor.fetchone()
-
-                if str(last_id) != 'None':
-                    last_id = last_id[0]
-                else:
-                    last_id = 0
-
-                new_id = str(last_id+1)
-
-                print("INSERT INTO portal_sensordata "
-                      "VALUES ( "+new_id+", " + s_sensor_type + ", " + s_value + ", " + s_time+")")
+                print("INSERT INTO portal_sensordata (sensor_id, value, timestamp)"
+                      "VALUES ( " + s_sensor_type + ", " + s_value + ", " + s_time+")")
 
                 # Adding the received sensor data to the appropriate table
-                self.cursor.execute("INSERT INTO portal_sensordata "
-                                    "VALUES ( "+new_id+", " + s_sensor_type + ", " + s_value + ", " + s_time+")")
+                self.cursor.execute("INSERT INTO portal_sensordata (sensor_id, value, timestamp)"
+                                    "VALUES ( " + s_sensor_type + ", " + s_value + ", " + s_time+")")
                 self.connection.commit()
 
                 print("Commited")
@@ -147,6 +152,14 @@ class PortalXMPP(ClientXMPP):
     def session_start(self, event):
         print("Started")
 
+    def sensor_types_cache_init(self):
+        self.connection = sqlite3.connect(self.DB_path)
+        self.cursor = self.connection.cursor()
+
+        self.cursor.execute("SELECT * FROM portal_sensors")
+        sensor_types = self.cursor.fetchall()
+        for item in sensor_types:
+            self.sensor_types_dict[str(item[1])] = item[0]
 
 
 # Setting up the command line arguments
@@ -158,9 +171,9 @@ optp.add_option('-d', '--debug', help='set logging to DEBUG', action='store_cons
 optp.add_option('-l', '--log=FILE', dest="log_file", help='log messages to FILE')
 
 opts, args = optp.parse_args()
-
-logging.basicConfig(level = opts.loglevel,
-					format = '%(levelname)-8s %(message)s', filename='log.txt', filemode='a')
+print(opts.log_file)
+logging.basicConfig(level=opts.loglevel,
+                    format='%(levelname)-8s %(message)s', filename=opts.log_file, filemode='a')
 
 # If configuration file does not exist the script will terminate
 if not (os.path.isfile(str(opts.conf_file))):
@@ -175,7 +188,7 @@ sender_jid = conf.get("XMPP", "sender_jid")
 sender_pass = conf.get("XMPP", "sender_pass")
 receiver_jid = conf.get("XMPP", "receiver_jid")
 sqlite3_DB_path = conf.get("XMPP", "sqlite3_DB_path")
-polling = int(conf.get("XMPP", "polling"))
+polling_interval = int(conf.get("XMPP", "polling"))
 
 # Initializing the XMPP bot
-xmpp = PortalXMPP(sender_jid, sender_pass, receiver_jid, sqlite3_DB_path, polling)
+xmpp = PortalXMPP(sender_jid, sender_pass, receiver_jid, sqlite3_DB_path, polling_interval)
