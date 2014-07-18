@@ -159,6 +159,7 @@ Installation guide
    At least a configuration file is needed to be specified with ***-c*** option ( you have to put the relative path, or full path if it is situated in other directory than cydonix agent). The log file is optional, you only need to add that option if you want to have a log file with the message stanzas sent or received through XMPP. 
 
 1. Copy the *debian/init.d/cydonix-agent* script file to init.d directory.
- 
+
+1. Connect a switch on GPIO4 ( pin 7 ) on Raspberry Pi board.
 
 Enjoy!
