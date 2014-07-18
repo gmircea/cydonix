@@ -160,6 +160,6 @@ Installation guide
 
 1. Copy the *debian/init.d/cydonix-agent* script file to init.d directory.
 
-1. Connect a switch on GPIO4 ( pin 7 ) on Raspberry Pi board.
+1. Connect a LED on GPIO4 ( pin 7 ) on Raspberry Pi board.
 
 Enjoy!
