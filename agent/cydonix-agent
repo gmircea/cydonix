@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
-from optparse import OptionParser
-import ConfigParser
-import threading
 import sys
 import os.path
+import threading
 import logging
-import commands
+import subprocess
 import time
+from optparse import OptionParser
+import ConfigParser
 
 from sleekxmpp.xmlstream import ET, tostring
 import sleekxmpp
@@ -16,9 +16,14 @@ import Adafruit_BMP.BMP085 as BMP085
 import RPi.GPIO as GPIO
 
 device_units = {
-    'temperature': 'C', 'pressure': 'bar', 'altitude': 'm',
-    'soc_temp': 'C', 'arm_freq': 'MHz', 'core_freq': 'MHz',
-    'core_volt': 'V', 'sdram_volt': 'V'
+    'temperature': 'C',
+    'pressure': 'bar', 
+    'altitude': 'm',
+    'soc_temp': 'C', 
+    'arm_freq': 'MHz', 
+    'core_freq': 'MHz',
+    'core_volt': 'V', 
+    'sdram_volt': 'V'
 }
 
 device_description = {
@@ -33,18 +38,21 @@ device_description = {
 }
 
 device_alias = {
-    'arm_freq': 'ARM frequency', 'core_freq': 'Core frequency',
-    'core_volt': 'Core voltage', 'sdram_volt': 'RAM voltage',
-    'altitude': 'Altitude', 'soc_temp': 'Core temperature',
-    'temperature': 'Temperature', 'pressure': 'Pressure'
+    'arm_freq': 'ARM frequency', 
+    'core_freq': 'Core frequency',
+    'core_volt': 'Core voltage', 
+    'sdram_volt': 'RAM voltage',
+    'altitude': 'Altitude', 
+    'soc_temp': 'Core temperature',
+    'temperature': 'Temperature', 
+    'pressure': 'Pressure'
 }
-
-
 
 class RaspberryGpio(threading.Thread) :
 
-    """Raspberry GPIO class. It has methods which
-    gets data from sensors and controls peripherals.
+    """Raspberry GPIO class.
+
+    It has methods which gets data from sensors and controls peripherals.
     """
 
     def __init__(self):
@@ -86,9 +94,14 @@ class RaspberryGpio(threading.Thread) :
     def run(self):
         # val_temp stores the previous sensor readings
         val_temp = {
-            'temperature': 0.0, 'pressure': 0.0, 'altitude': 0.0,
-            'switch': self.device_state['switch'], 'soc_temp': 0.0,
-            'arm_freq': 0.0, 'core_freq': 0.0, 'core_volt': 0.0,
+            'temperature': 0.0,
+            'pressure': 0.0,
+            'altitude': 0.0,
+            'switch': self.device_state['switch'],
+            'soc_temp': 0.0,
+            'arm_freq': 0.0,
+            'core_freq': 0.0,
+            'core_volt': 0.0,
             'sdram_volt': 0.0
         }
 
@@ -99,31 +112,40 @@ class RaspberryGpio(threading.Thread) :
             pressure = self.sensor.read_pressure()
             altitude = self.sensor.read_altitude()
             self.device_val = {
-                     'temperature': temperature, 'pressure': pressure,
-                     'altitude': altitude, 'soc_temp': None,
-                     'arm_freq': None, 'core_freq': None,
-                     'core_volt': None, 'sdram_volt': None,
-                     'switch': False
+                'temperature': temperature,
+                'pressure': pressure,
+                'altitude': altitude,
+                'soc_temp': None,
+                'arm_freq': None,
+                'core_freq': None,
+                'core_volt': None,
+                'sdram_volt': None,
+                'switch': False
             }
             vcgencmd = {
-                'core_volt': "measure_volts", 'soc_temp': "measure_temp",
+                'core_volt': "measure_volts",
+                'soc_temp': "measure_temp",
                 'sdram_volt': "measure_volts sdram_c",
                 'core_freq': "measure_clock core",
                 'arm_freq': "measure_clock arm"
             }
             replace_1 = {
-                'arm_freq': "frequency(45)=", 'core_freq': "frequency(1)=",
-                'soc_temp': "temp=", 'core_volt': "volt=",
+                'arm_freq': "frequency(45)=",
+                'core_freq': "frequency(1)=",
+                'soc_temp': "temp=",
+                'core_volt': "volt=",
                 'sdram_volt': "volt="
             }
             replace_2 = {
-                'soc_temp': "\'C", 'core_volt': "V", 'sdram_volt': "V"
+                'soc_temp': "\'C",
+                'core_volt': "V",
+                'sdram_volt': "V"
             }
             # Raspberry Pi parameter readings
             for key in vcgencmd:
-                self.device_val[key] = commands.getoutput(
-                                                  '/opt/vc/bin/vcgencmd '+
-                                                  vcgencmd[key])
+                self.device_val[key] = subprocess.check_output(
+                                                      ['/opt/vc/bin/vcgencmd',
+                                                      vcgencmd[key]])
             for key in replace_1:
                 self.device_val[key] = self.device_val[key].replace(replace_1[key], '')
             for key in replace_2:
@@ -159,7 +181,8 @@ class RaspberryGpio(threading.Thread) :
 
 class XmppClass(sleekxmpp.ClientXMPP):
 
-    """  Xmpp client class."""
+    """Xmpp client class."""
+
     def __init__(self, jid, password, node):
         super(XmppClass, self).__init__(jid, password)
 
@@ -303,11 +326,11 @@ if __name__ == '__main__':
         if xmpp.connect(host, port):
             xmpp.process()
         else:
-            print "Unable to connect!"
+            logging.error("Unable to connect!")
 
     except ConfigParser.NoOptionError:
         print "Could not find host and port"
         if xmpp.connect():
             xmpp.process()
         else:
-            print "Unable to connect!"
+            logging.error("Unable to connect!")
