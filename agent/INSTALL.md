@@ -10,17 +10,17 @@ Installation guide
        * insert the SD card and mount it;
        * run in Terminal the ***df*** command; find the device in */dev* directory.
        * unmount the SD card with the following command:
-           ``` 
-        $ umount /media/sdcardname 
-            ```
+      ``` 
+      $ umount /media/sdcardname 
+      ```
        * format the SD card in FAT32 :
-          ``` 
-        # mkdosfs -F 32 -v /dev/mmcblk0 
-          ```
+      ``` 
+      # mkdosfs -F 32 -v /dev/mmcblk0 
+      ```
        * copy the .img file to the SD card using dd command:
-           ```
-        # dd bs=1M if="full_path_to_img" of=path_to_sdcard 
-           ```
+      ```
+      # dd bs=1M if="full_path_to_img" of=path_to_sdcard 
+      ```
        * when it is ready you can unplug and use the SD card with Raspberry Pi.
      * on **Windows**:
        * download [Win32 Disk Imager](http://sourceforge.net/projects/win32diskimager/)
