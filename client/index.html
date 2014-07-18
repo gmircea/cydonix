@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="viewport"
+        content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width, height=device-height, target-densitydpi=device-dpi" />
+    <link rel="stylesheet" type="text/css" href="css/index.css" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    
+    <script type="text/javascript" src="cordova.js"></script>
+    <script type="text/javascript" src='js/strophe.js'></script>
+    <script type="text/javascript" src="js/index.js"></script>
+    <script type="text/javascript" src='js/strophe.pubsub.js'></script>
+    
+    <title>Sensor Monitoring</title>
+</head>
+<body onload="onLoad()">
+    <div id="app" class="app">
+        <h1>Log In</h1>
+        <table id="LoginTable" align="center">
+            <tr>
+                <td>BOSH</td>
+                <td><input id="bosh" type="text" name="bosh" style="width: 100%"></td>
+            </tr>
+            <tr>
+                <td>USER</td>
+                <td><input id="user" type="text" name="user" style="width: 100%"></td>
+            </tr>
+            <tr>
+                <td>DOMAIN</td>
+                <td><input id="domain" type="text" name="domain" style="width: 100%"></td>
+            </tr>
+            <tr>
+                <td>PASSWORD</td>
+                <td><input id="pwd" type="password" name="pwd" style="width: 100%"></td>
+            </tr>
+            <tr>
+                <td>Pubsub server</td>
+                <td><input id="pubsubs" type="text" name="pubsubs" style="width: 100%"></td>
+            </tr>
+            <tr>
+                <td>Pubsub node</td>
+                <td><input id="pubsubn" type="text" name="pubsubn" style="width: 100%"></td>
+            </tr>
+            <tr>
+                <td>Message to</td>
+                <td><input id="messto" type="text" name="messto" style="width: 100%"></td>
+            </tr>
+        </table>
+        <br>
+        <button id="button" type="button" onclick="Login()">LOGIN</button>
+        <br>
+        <p id="error"></p>
+    </div>
+
+    <div id="logged" class="logged" style="display: none;">
+        <h1>Sensor Monitoring</h1>
+
+        <img id="stopimg" src="img/stop.png" width="100" height="125" style="display: none;"> 
+        <img id="goimg" src="img/go.png" width="100" height="125" style="display: none;"> <br>
+        <button id="realtime" type="button" onclick="RealTime()">Real time</button>
+        <button id="history" type="button" onclick="History()">History</button>
+
+        <table id="ResultTable" align="center">
+        </table>
+
+        <table id="HistoryTable" align="center" style="display: none;">
+            <tr>
+                <td colspan="2"><form>
+                        <input type="radio" name="sensors" id="temperature" value="temperature">Temperature<br>
+                        <input type="radio" name="sensors" id="altitude" value="altitude">Altitude<br> 
+                        <input type="radio" name="sensors" id="pressure" value="pressure">Pressure<br> 
+                        <input type="radio" name="sensors" id="soc_temp" value="soc_temp">Core Temperature<br>
+                        <input type="radio" name="sensors" id="arm_freq" value="arm_freq">ARM frequency<br>
+                        <input type="radio" name="sensors" id="core_freq" value="core_freq">Core frequency<br>
+                        <input type="radio" name="sensors" id="core_volt" value="core_volt">Core Voltage<br>
+                        <input type="radio" name="sensors" id="sdram_volt" value="sdram_volt">RAM Voltage<br>
+                    </form></td>
+            </tr>
+            <tr>
+                <td>From:</td>
+                <td><input type="datetime-local" id="fromdate" name="fromdate"></td>
+            </tr>
+            <tr>
+                <td>To:</td>
+                <td><input type="datetime-local" id="todate" name="todate"></td>
+            </tr>
+            <tr>
+                <td>Offset:</td>
+                <td><input type="text" id="offset" name="offset"></td>
+            </tr>
+            <tr>
+                <td>Count:</td>
+                <td><input type="text" id="count" name="count"></td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <button id="sendtoserver" type="button" onclick="SendToServer()">SEND</button>
+                </td>
+            </tr>
+        </table>
+
+        <table id="HistoryResult" align="center" style="display: none;">
+        </table>
+
+        <p id="result"></p>
+        <button id="logout" type="button" onclick="Logout()">LOGOUT</button>
+        <button id="send" type="button" onclick="Send()">LIGHT</button>
+        <br>
+    </div>
+
+</body>
+</html>

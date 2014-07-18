@@ -1,0 +1,21 @@
+body {
+	background-color: #7FFFD4;
+	text-align: center;
+	align: center;
+}
+
+.app {
+	font-size: 30pt;
+	font-family: "Lucida Console";
+	width: 100%;
+	height: 100%;
+	align: center;
+}
+
+.logged {
+	font-size: 30pt;
+	font-family: "Lucida Console";
+	width: 100%;
+	height: 100%;
+	align: center;
+}
