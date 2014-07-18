@@ -48,14 +48,16 @@ Installation guide
 
    * for **Ubuntu** :
      * install OpenSSH through Terminal :
+
        ``` 
        # apt-get install openssh-server openssh-client 
        ```
      * connect to Raspberry Pi:
+   
        ``` 
         $ ssh pi@ipaddress_of_raspberry 
        ```
-
+       
 1. Installing RPi.GPIO with the following command lines:
     ```
     # apt-get update
