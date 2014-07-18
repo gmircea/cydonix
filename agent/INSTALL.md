@@ -45,7 +45,6 @@ Installation guide
      * enter the username and password :
           * username: pi ;
           * password: raspberry (DEFAULT);
-
    * for **Ubuntu** :
      * install OpenSSH through Terminal :
 
@@ -58,6 +57,7 @@ Installation guide
         $ ssh pi@ipaddress_of_raspberry 
        ```
        
+
 1. Installing RPi.GPIO with the following command lines:
     ```
     # apt-get update
