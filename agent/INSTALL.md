@@ -10,11 +10,17 @@ Installation guide
        * insert the SD card and mount it;
        * run in Terminal the ***df*** command; find the device in */dev* directory.
        * unmount the SD card with the following command:
-           ``` $ umount /media/sdcardname ```
+      ``` 
+      $ umount /media/sdcardname 
+      ```
        * format the SD card in FAT32 :
-          ``` # mkdosfs -F 32 -v /dev/mmcblk0 ```
+      ``` 
+      # mkdosfs -F 32 -v /dev/mmcblk0 
+      ```
        * copy the .img file to the SD card using dd command:
-           ```# dd bs=1M if="full_path_to_img" of=path_to_sdcard ```
+      ```
+      # dd bs=1M if="full_path_to_img" of=path_to_sdcard 
+      ```
        * when it is ready you can unplug and use the SD card with Raspberry Pi.
      * on **Windows**:
        * download [Win32 Disk Imager](http://sourceforge.net/projects/win32diskimager/)
@@ -31,82 +37,129 @@ Installation guide
      * *boot_behaviour* - you can choose yes if you want to boot it on GUI interface , or no if you exclusively use the command line; we will login to Raspberry Pi through SSH;
     
    For more information you have this [tutorial](https://learn.adafruit.com/adafruits-raspberry-pi-lesson-2-first-time-configuration/overview) for a better understanding.
-        
-1. Connect through SSH to the Raspberry Pi with PuTTY (on Windows)
-or ssh (Ubuntu).
-   - for **Windows** : 
+
+1. Connect through SSH to the Raspberry Pi with PuTTY (on Windows) or ssh (Ubuntu).
+   * for **Windows** : 
      * download [PuTTY](http://www.putty.org/).
      * enter Raspberry Pi's IP address and Open;
      * enter the username and password :
-            - username: pi ;
-            - password: raspberry (DEFAULT);
-
-   - for **Ubuntu** :
+          * username: pi ;
+          * password: raspberry (DEFAULT);
+   * for **Ubuntu** :
      * install OpenSSH through Terminal :
-       ``` # apt-get install openssh-server openssh-client ```
+
+       ``` 
+       # apt-get install openssh-server openssh-client 
+       ```
      * connect to Raspberry Pi:
-       ``` $ ssh pi@ipaddress_of_raspberry ```
-  Also you can create other user and login with it. From now we will work on Raspberry Pi.
+   
+       ``` 
+        $ ssh pi@ipaddress_of_raspberry 
+       ```
+       
 
 1. Installing RPi.GPIO with the following command lines:
-       ```# apt-get update```
-       ```# apt-get install python-dev```
-       ```# apt-get install python-rpi.gpio```
+    ```
+    # apt-get update
+    ```
+    ```
+    # apt-get install python-dev
+    ```
+    ```
+    # apt-get install python-rpi.gpio
+    ```
 
 1. Installing pip :
-       ``` # apt-get install python-pip ```
+    ``` 
+    # apt-get install python-pip 
+    ```
 
 1. Installing sleekxmpp package through pip : 
-       ```# pip install sleekxmpp ```
+    ```
+    # pip install sleekxmpp 
+    ```
 
 1. Installing hipi to enable i2c on Raspberry Pi :
-      ``` # apt-get update ```
-       ``` $ wget http://raspberry.znix.com/hipifiles/hipi-install ```
-       ``` $ perl hipi-install ```
+    ``` 
+    # apt-get update 
+    ```
+    ``` 
+    $ wget http://raspberry.znix.com/hipifiles/hipi-install 
+    ```
+    ``` 
+    $ perl hipi-install 
+    ```
 
 1. Enabling secondary i2c at each boot :
   Write the following line in the */etc/rc.local* file:
-       ``` /usr/local/bin/hipi-i2c e 0 1 ```
+   ``` 
+   /usr/local/bin/hipi-i2c e 0 1 
+   ```
   You can access the file as :
-       ``` # nano /etc/rc.local ```
+   ``` 
+   # nano /etc/rc.local 
+   ```
 
 1. You can test the connected device :
-       ``` # i2cdetect -y 0 ```
+   ``` 
+   # i2cdetect -y 0 
+   ```
    or 
-       ``` # i2cdetect -y 1 ```
+   ``` 
+   # i2cdetect -y 1 
+   ```
 
    depends on which version of Raspberry Pi you use.   
 
 1. Reboot Raspberry Pi:
-       ``` # reboot ```
+    ``` 
+    # reboot
+    ```
     and login again through SSH.  
 
 1. Installing git :
-       ``` # apt-get install git-core ```
+    ``` 
+    # apt-get install git-core 
+    ```
 
 1. Installing and using the Adafruit BMP Python Library:
-     ``` # apt-get update ```
-       ``` # apt-get install git build-essential python-dev python-smbus ```
-     ``` $ git clone https://github.com/adafruit/Adafruit_Python_BMP.git ```
-      ``` $ cd Adafruit_Python_BMP ```
-      ``` # python setup.py install```
+    ``` 
+    # apt-get update 
+    ```
+    ``` 
+    # apt-get install git build-essential python-dev python-smbus 
+    ```
+    ```
+    $ git clone https://github.com/adafruit/Adafruit_Python_BMP.git 
+    ```
+    ```
+    $ cd Adafruit_Python_BMP 
+    ```
+    ```
+     # python setup.py install
+    ```
 
 1. Create configuration file and save it somewhere.
 1. Clone git repository :
-       ``` $ git clone https://github.com/vitheia/cydonix.git ```
+    ``` 
+    $ git clone https://github.com/vitheia/cydonix.git 
+    ```
 
 1. Go to the cydonix/agent directory and copy the script to */usr/bin* directory. 
 
 1. Add execute rights with the following command :
-        ```# chmod u+x cydonix-agent ```
+    ```
+    # chmod u+x cydonix-agent 
+    ```
 
 1. If you want to test the script you can go to the directory you saved and run it in Terminal:
-          e.g : ```# python cydonix-agent -c config_file.ini -l log_file.log ```
+   ```
+   # python cydonix-agent -c config_file.ini -l log_file.log 
+   ```
    At least a configuration file is needed to be specified with ***-c*** option ( you have to put the relative path, or full path if it is situated in other directory than cydonix agent). The log file is optional, you only need to add that option if you want to have a log file with the message stanzas sent or received through XMPP. 
 
-1. Open the *rc.local* file with  ```# nano /etc/rc.local ```
-    and write at the end of the file the following command:
-         ``` # cydonix-agent -c path_to_config_file -l path_for_log_file ```
-    It will start the script at each boot.
+1. Copy the *debian/init.d/cydonix-agent* script file to init.d directory.
+
+1. Connect a LED on GPIO4 ( pin 7 ) on Raspberry Pi board.
 
 Enjoy!
