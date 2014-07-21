@@ -20,7 +20,7 @@ import os
 
 
 class PortalXMPP(ClientXMPP):
-    def __init__(self, jid, password, sensor_bot_jid, pubsub_server_jid, node, sqlite3_db_path, polling):
+    def __init__(self, jid, password, sensor_bot_jid, pubsub_server_jid, node, sqlite3_db_path):
         ClientXMPP.__init__(self, jid, password)
 
         # Setting the sender jid and the receiver jid
@@ -29,9 +29,6 @@ class PortalXMPP(ClientXMPP):
 
         # The path to the sqlite3 database
         self.DB_path = sqlite3_db_path
-
-        # The sensor value polling interval in seconds
-        self.polling = polling
 
         # The sensor_types cache
         self.sensor_types_dict = {}
@@ -57,19 +54,11 @@ class PortalXMPP(ClientXMPP):
         try:
             #self.subscribe()
             #self.unsubscribe()
-            self.process(block=True)
-        except KeyboardInterrupt:
-            self.send_thread.cancel()
-        '''try:
-            # Creating and starting first send thread
-            t = threading.Timer(1, self.send_m)
-            t.start()
 
             # Starting to process incoming messages
             self.process(block=True)
-
         except KeyboardInterrupt:
-            self.send_thread.cancel()'''
+            self.send_thread.cancel()
 
     def send_m(self):
         self.connection = sqlite3.connect(self.DB_path)
@@ -92,13 +81,6 @@ class PortalXMPP(ClientXMPP):
 
         print("Sent 'GET "+s+"'")
         self.process(block=False)
-
-        try:
-            # Creating and starting the next send thread before the current one terminates
-            self.send_thread = threading.Timer(self.polling, self.send_m)
-            self.send_thread.start()
-        except KeyboardInterrupt:
-            self.send_thread.cancel()
 
     def receive_m(self, msg):
         self.connection = sqlite3.connect(self.DB_path)
@@ -243,9 +225,8 @@ sender_jid = conf.get("XMPP", "sender_jid")
 sender_pass = conf.get("XMPP", "sender_pass")
 receiver_jid = conf.get("XMPP", "receiver_jid")
 sqlite3_DB_path = conf.get("XMPP", "sqlite3_DB_path")
-polling_interval = int(conf.get("XMPP", "polling"))
 pubsub_jid = conf.get("XMPP", "pubsub_jid")
 pubsub_node = conf.get("XMPP", "pubsub_node")
 
 # Initializing the XMPP bot
-xmpp = PortalXMPP(sender_jid, sender_pass, receiver_jid, pubsub_jid, pubsub_node, sqlite3_DB_path, polling_interval)
+xmpp = PortalXMPP(sender_jid, sender_pass, receiver_jid, pubsub_jid, pubsub_node, sqlite3_DB_path)
