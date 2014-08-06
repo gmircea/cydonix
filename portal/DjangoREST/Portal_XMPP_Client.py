@@ -2,6 +2,7 @@ __author__ = 'alex'
 import logging
 
 from sleekxmpp import ClientXMPP
+from sleekxmpp.xmlstream import ET, tostring
 
 from datetime import datetime
 
@@ -16,8 +17,10 @@ import sys
 import os
 
 
+
+
 class PortalXMPP(ClientXMPP):
-    def __init__(self, jid, password, sensor_bot_jid, sqlite3_db_path, polling):
+    def __init__(self, jid, password, sensor_bot_jid, pubsub_server_jid, node, sqlite3_db_path):
         ClientXMPP.__init__(self, jid, password)
 
         # Setting the sender jid and the receiver jid
@@ -26,9 +29,6 @@ class PortalXMPP(ClientXMPP):
 
         # The path to the sqlite3 database
         self.DB_path = sqlite3_db_path
-
-        # The sensor value polling interval in seconds
-        self.polling = polling
 
         # The sensor_types cache
         self.sensor_types_dict = {}
@@ -46,14 +46,17 @@ class PortalXMPP(ClientXMPP):
         # Adding "message" event handler
         self.add_event_handler("message", self.receive_m)
 
+        self.register_plugin('xep_0060')
+        self.node = node
+        self.pubsub_server = pubsub_server_jid
+        self.add_event_handler('pubsub_publish', self._publish)
+
         try:
-            # Creating and starting first send thread
-            t = threading.Timer(1, self.send_m)
-            t.start()
+            #self.subscribe()
+            #self.unsubscribe()
 
             # Starting to process incoming messages
             self.process(block=True)
-
         except KeyboardInterrupt:
             self.send_thread.cancel()
 
@@ -79,18 +82,12 @@ class PortalXMPP(ClientXMPP):
         print("Sent 'GET "+s+"'")
         self.process(block=False)
 
-        try:
-            # Creating and starting the next send thread before the current one terminates
-            self.send_thread = threading.Timer(self.polling, self.send_m)
-            self.send_thread.start()
-        except KeyboardInterrupt:
-            self.send_thread.cancel()
-
     def receive_m(self, msg):
         self.connection = sqlite3.connect(self.DB_path)
         self.cursor = self.connection.cursor()
 
-        print("Received '"+str(msg['body'])+"'")
+        #print("Received '"+str(msg['body'])+"'")
+        print("Received '"+str(msg)+"'")
 
         # Parsing the received message, with regular expressions
         s_sensor_type_names = re.split(' ', str(msg['body']))
@@ -161,6 +158,46 @@ class PortalXMPP(ClientXMPP):
         for item in sensor_types:
             self.sensor_types_dict[str(item[1])] = item[0]
 
+    def subscribe(self):
+        try:
+            result = self['xep_0060'].subscribe(self.pubsub_server, self.node)
+            print(result)
+            print('Subscribed %s to node %s' % (self.boundjid.bare, self.node))
+        except:
+            logging.error('Could not subscribe %s to node %s' % (self.boundjid.bare, self.node))
+
+    def unsubscribe(self):
+        try:
+            result = self['xep_0060'].unsubscribe(self.pubsub_server, self.node)
+            print('Unsubscribed %s from node %s' % (self.boundjid.bare, self.node))
+        except:
+            logging.error('Could not unsubscribe %s from node %s' % (self.boundjid.bare, self.node))
+
+    def _publish(self, msg):
+        """Handle receiving a publish item event."""
+        print('Published item %s to %s:' % (
+            msg['pubsub_event']['items']['item']['id'],
+            msg['pubsub_event']['items']['node']))
+        data = msg['pubsub_event']['items']['item']['payload']
+        msg_2 = {}
+        if data is not None:
+            str_data = tostring(data)
+            erase = 'abc'
+            while True:
+                try:
+                    erase = re.search("(<.*?>)", str_data).group(1)
+                except AttributeError:
+                    break
+                str_data = str_data.replace(erase, '')
+
+            msg_2['body'] = str_data
+
+            # The 2 ways to insert new data in the sensor data table
+            self.receive_m(msg_2)  # 1) get data from notification
+            #self.send_m()  # 2) send get data and parse received message
+        else:
+            print('No item content')
+
 
 # Setting up the command line arguments
 optp = OptionParser()
@@ -188,7 +225,8 @@ sender_jid = conf.get("XMPP", "sender_jid")
 sender_pass = conf.get("XMPP", "sender_pass")
 receiver_jid = conf.get("XMPP", "receiver_jid")
 sqlite3_DB_path = conf.get("XMPP", "sqlite3_DB_path")
-polling_interval = int(conf.get("XMPP", "polling"))
+pubsub_jid = conf.get("XMPP", "pubsub_jid")
+pubsub_node = conf.get("XMPP", "pubsub_node")
 
 # Initializing the XMPP bot
-xmpp = PortalXMPP(sender_jid, sender_pass, receiver_jid, sqlite3_DB_path, polling_interval)
+xmpp = PortalXMPP(sender_jid, sender_pass, receiver_jid, pubsub_jid, pubsub_node, sqlite3_DB_path)
