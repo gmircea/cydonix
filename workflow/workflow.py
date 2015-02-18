@@ -14,7 +14,7 @@ if sys.version_info < (3, 0) :
 else:
     raw_input = input
 
-class PortalXMPP(ClientXMPP):
+class Workflow(ClientXMPP):
     def __init__(self, jid, password, sensor_bot_jid, pubsub_server_jid, node, trigger, action):
         ClientXMPP.__init__(self, jid, password)
 
@@ -154,4 +154,4 @@ if __name__ == '__main__':
 
 
     # Initializing the XMPP bot
-    xmpp = PortalXMPP(conf.get("XMPP", "sender_jid"), conf.get("XMPP", "sender_pass"), conf.get("XMPP", "receiver_jid"), conf.get("XMPP", "pubsub_jid"), conf.get("XMPP", "pubsub_node"), trigger, conf.get("Workflow", "action"))
+    xmpp = Workflow(conf.get("XMPP", "sender_jid"), conf.get("XMPP", "sender_pass"), conf.get("XMPP", "receiver_jid"), conf.get("XMPP", "pubsub_jid"), conf.get("XMPP", "pubsub_node"), trigger, conf.get("Workflow", "action"))
