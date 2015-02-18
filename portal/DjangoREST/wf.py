@@ -1,6 +1,5 @@
 from optparse import OptionParser
 from sleekxmpp import ClientXMPP
-from xml.etree import cElementTree as ET
 
 import ConfigParser
 import logging
