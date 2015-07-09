@@ -1,0 +1,336 @@
+#!/usr/bin/env python
+
+import sys
+import os.path
+import threading
+import logging
+import subprocess
+import time
+from optparse import OptionParser
+import ConfigParser
+
+from sleekxmpp.xmlstream import ET, tostring
+import sleekxmpp
+
+import Adafruit_BMP.BMP085 as BMP085
+import RPi.GPIO as GPIO
+
+device_units = {
+    'temperature': 'C',
+    'pressure': 'bar', 
+    'altitude': 'm',
+    'soc_temp': 'C', 
+    'arm_freq': 'MHz', 
+    'core_freq': 'MHz',
+    'core_volt': 'V', 
+    'sdram_volt': 'V'
+}
+
+device_description = {
+    'temperature': 'BMP180 temperature sensor',
+    'core_freq': 'BCM2835 GPU code frequency',
+    'altitude': 'BMP180 calculated altitude',
+    'pressure': 'BMP180 pressure sensor',
+    'arm_freq': 'BCM2835 ARM frequency',
+    'core_volt': 'BCM2835 core voltage',
+    'sdram_volt': 'BCM2835 ram voltage',
+    'soc_temp': 'BCM2835 temperature'
+}
+
+device_alias = {
+    'arm_freq': 'ARM frequency', 
+    'core_freq': 'Core frequency',
+    'core_volt': 'Core voltage', 
+    'sdram_volt': 'RAM voltage',
+    'altitude': 'Altitude', 
+    'soc_temp': 'Core temperature',
+    'temperature': 'Temperature', 
+    'pressure': 'Pressure'
+}
+
+class RaspberryGpio(threading.Thread) :
+
+    """Raspberry GPIO class.
+
+    It has methods which gets data from sensors and controls peripherals.
+    """
+
+    def __init__(self):
+        """RaspberyyGpio Class Constructor."""
+        threading.Thread.__init__(self)
+        self.sensor = BMP085.BMP085(busnum=0)
+        GPIO.setwarnings(False)
+        GPIO.setmode(GPIO.BOARD)
+        self.device_val = {}
+        # Initial state for each device
+        self.device_state = {'switch': None}
+        # IO pin for devices
+        self.device_pin = {'switch': 7}
+        # Set IO pin for each device
+        for key in self.device_pin:
+            GPIO.setup(self.device_pin[key], GPIO.OUT)
+
+    def setOutput(self, key):
+        """Sets output value for a specific device."""
+        if (self.device_state[key] == "True" or
+            self.device_state[key] == "true"):
+            GPIO.output(self.device_pin[key], True)
+        elif (self.device_state[key] == "False" or
+              self.device_state[key] == "false"):
+            GPIO.output(self.device_pin[key], False)
+
+    def setDeviceState(self, key, value):
+        self.device_state[key] = value
+
+    def getDeviceState(self):
+        return self.device_state
+
+    def setDeviceValue(self, key, value):
+        self.device_val[key] = value
+
+    def getDeviceValue(self):
+        return self.device_val
+
+    def run(self):
+        # val_temp stores the previous sensor readings
+        val_temp = {
+            'temperature': 0.0,
+            'pressure': 0.0,
+            'altitude': 0.0,
+            'switch': self.device_state['switch'],
+            'soc_temp': 0.0,
+            'arm_freq': 0.0,
+            'core_freq': 0.0,
+            'core_volt': 0.0,
+            'sdram_volt': 0.0
+        }
+
+        while True:
+            time.sleep(polling)
+            # BMP180 sensor readings
+            temperature = self.sensor.read_temperature()
+            pressure = self.sensor.read_pressure()
+            altitude = self.sensor.read_altitude()
+            self.device_val = {
+                'temperature': temperature,
+                'pressure': pressure,
+                'altitude': altitude,
+                'soc_temp': None,
+                'arm_freq': None,
+                'core_freq': None,
+                'core_volt': None,
+                'sdram_volt': None,
+                'switch': False
+            }
+            vcgencmd = {
+                'core_volt': "measure_volts",
+                'soc_temp': "measure_temp",
+                'sdram_volt': "measure_volts sdram_c",
+                'core_freq': "measure_clock core",
+                'arm_freq': "measure_clock arm"
+            }
+            replace_1 = {
+                'arm_freq': "frequency(45)=",
+                'core_freq': "frequency(1)=",
+                'soc_temp': "temp=",
+                'core_volt': "volt=",
+                'sdram_volt': "volt="
+            }
+            replace_2 = {
+                'soc_temp': "\'C",
+                'core_volt': "V",
+                'sdram_volt': "V"
+            }
+            # Raspberry Pi parameter readings
+            for key in vcgencmd:
+                self.device_val[key] = subprocess.check_output(
+                                                      ['/opt/vc/bin/vcgencmd',
+                                                      vcgencmd[key]])
+            for key in replace_1:
+                self.device_val[key] = self.device_val[key].replace(replace_1[key], '')
+            for key in replace_2:
+                self.device_val[key] = self.device_val[key].replace(replace_2[key], '')
+            for key in self.device_val:
+                if(key != 'switch'):
+                    self.device_val[key] = float(self.device_val[key])
+
+            self.device_val['core_freq'] /= 1000000.0
+            self.device_val['arm_freq'] /= 1000000.0
+            self.device_val['pressure'] /= 100000.0
+            self.device_val['pressure'] = round(self.device_val['pressure'], 4)
+            self.device_val['altitude'] = round(self.device_val['altitude'], 2)
+
+            #   We will publish a notification on the pubsub node
+            # in case that sensor values have been modified with
+            # 5 percents comparing to the previous values ( this
+            # does not include the switch state ) :
+            for key in self.device_val:
+                for key2 in self.device_pin:
+                    if (key != key2):
+                        if (self.device_val[key] >= val_temp[key] + 0.005*val_temp[key] or
+                                self.device_val[key] <= val_temp[key] - 0.005*val_temp[key]):
+                             modified = True
+                             break
+            if modified:
+                mymsg = ' '.join(['%s=%s' % (key, value) for (key, value)
+                                 in self.device_val.items()])
+                xmpp.publish(mymsg)
+                modified = False
+            val_temp = self.device_val
+
+
+class XmppClass(sleekxmpp.ClientXMPP):
+
+    """Xmpp client class."""
+
+    def __init__(self, jid, password, node):
+        super(XmppClass, self).__init__(jid, password)
+
+        self.register_plugin('xep_0060')
+        self.node = node
+        self.pubsub_server = "pubsub." + str(self.boundjid.host)
+        self.add_event_handler('session_start', self.start)
+        self.add_event_handler('message', self.message)
+
+
+    def start(self, event):
+        self.send_presence()
+
+    def message(self, msg):
+        if msg['type'] in ('normal', 'chat'):
+            logging.info(msg)
+            # Message splitting
+            message_string = msg['body'].split(" ")
+
+            if (message_string[0] == 'GET'):
+            # GET command :
+                output_vals = {}
+                device_val = rgpio.getDeviceValue()
+                for i in message_string[1:]:
+                #  Only devices which exist
+                # will be returned with its value
+                    if device_val.has_key(i):
+                        output_vals[i] = device_val[i]
+                # XMPP Message Composition and reply
+                mymsg = ' '.join(['%s=%s' % (key, value) for (key, value)
+                                 in output_vals.items()])
+                msg.reply(mymsg).send()
+                logging.info(msg)
+
+            elif (message_string[0] == 'SET'):
+            # SET command :
+                my_device = {}
+                for i in message_string[1:]:
+                # Creating dictionary with devices and control values
+                    device = i.split("=")
+                    my_device[device[0]] = device[1]
+                device_state = rgpio.getDeviceState();
+                for key in my_device:
+                #  If device exists in device_state dictionary, then
+                # it will change the state of that device
+                    if device_state.has_key(key):
+                        rgpio.setDeviceState(key, my_device[key])
+                        rgpio.setDeviceValue(key, my_device[key])
+                        rgpio.setOutput(key)
+                # XMPP Message Composition and reply
+                mymsg = ' '.join(['%s=%s' % (key, value) for (key, value)
+                                 in device_state.items()])
+                msg.reply(mymsg).send()
+                logging.info(msg)
+
+            elif (message_string[0] == 'DISCO'):
+            # Custom disco functionality
+                device_disco = {}
+                device_val = rgpio.getDeviceValue()
+                for key in device_val:
+                # It will send data to cydonix client about devices
+                # which can send data from sensors
+                    if device_val[key] != 0:
+                        device_disco[key] = device_units[key] + "|" + \
+                                            device_description[key] + "|" + \
+                                            device_alias[key]
+                # XMPP Message Composition and reply
+                mymsg = ';'.join(['%s|%s' % (key, value) for (key, value)
+                                 in device_disco.items()])
+                msg.reply(mymsg).send()
+                logging.info(msg)
+
+            else:
+            # HELP or invalid command
+                error_message = "Available commands \
+                                 \n GET device ...  \
+                                 \n SET device=value ... "
+                msg.reply(error_message).send()
+                logging.info(msg)
+
+    def publish(self, data):
+
+        payload = ET.fromstring("<test xmlns='test'>%s</test>" % data)
+        try:
+            result = self['xep_0060'].publish(self.pubsub_server,
+                                              self.node,
+                                              payload=payload)
+            id = result['pubsub']['publish']['item']['id']
+
+        except:
+            logging.error('Could not publish to: %s' % self.node)
+
+
+if __name__ == '__main__':
+
+    # Setup the command line arguments.
+    optp=OptionParser()
+
+    optp.add_option('-c', '--config=FILE', dest= "conf_file",
+                    help = 'configuration FILE')
+    optp.add_option('-d', '--debug', help = 'set logging to DEBUG',
+                    action = 'store_const', dest = 'loglevel',
+                    const = logging.INFO)
+    optp.add_option('-l', '--log=FILE', dest= "log_file",
+                    help = 'log messages to FILE')
+
+    opts, args = optp.parse_args()
+
+    logging.basicConfig(level=opts.loglevel,
+                        format='%(asctime)-8s %(message)s',
+                        filename=opts.log_file, filemode='a')
+
+    # If configuration file is not specified
+    if opts.conf_file is None:
+        sys.exit("Configuration file not specified")
+
+    # If configuration file does not exist it will exit the script
+    if not (os.path.isfile(opts.conf_file)):
+        sys.exit("The configuration file does not exist")
+
+    # Reading data from configuration file
+    conf = ConfigParser.ConfigParser()
+    conf.read(opts.conf_file)
+
+    username = conf.get("XMPP", "username")
+    password = conf.get("XMPP", "password")
+    node = conf.get("XMPP", "node")
+
+    polling = int(conf.get("Device", "polling"))
+
+    xmpp = XmppClass(username, password, node)
+
+    # Starting GPIO sensor reading thread
+    rgpio = RaspberryGpio()
+    rgpio.start()
+
+    # Connecting to the XMPP Server
+    try:
+        host = conf.get("XMPP", "host")
+        port = conf.get("XMPP", "port")
+        if xmpp.connect(host, port):
+            xmpp.process()
+        else:
+            logging.error("Unable to connect!")
+
+    except ConfigParser.NoOptionError:
+        print "Could not find host and port"
+        if xmpp.connect():
+            xmpp.process()
+        else:
+            logging.error("Unable to connect!")
